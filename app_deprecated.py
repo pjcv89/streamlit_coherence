@@ -108,7 +108,7 @@ def main():
     st.title("CDI Coherence - Automatic Labeling Demo")
 
     option = st.sidebar.selectbox(
-        "Select Option", ("Sampling Sentences", "Enter Inputs", "Visualization")
+        "Select Option", ("Sampling Sentences", "Enter Inputs")
     )
 
     if option == "Sampling Sentences":
@@ -174,7 +174,7 @@ def main():
                 "Messages seem non-compatible (at threshold: " + str(threshold) + ")",
                 icon="⚠️",
             )
-    elif option == "Enter Inputs":
+    else:
         sentence1 = st.text_input("Sentence 1", value="your investment has increased")
         if sentence1 != "":
             # output1 = score_sentence(siamese_model, categories_embeddings, sentence1)
@@ -221,21 +221,6 @@ def main():
                     + ")",
                     icon="⚠️",
                 )
-    else:
-        st.header("Projections")
-        option = st.selectbox("Set of messages", ("Training", "Test", "Test (Spanish)"))
-        if option == "Training":
-            file_name = "umap_train.html"
-        elif option == "Test":
-            file_name = "umap_test.html"
-        else:
-            file_name = "umap_test_bigger_spanish.html"
-
-        path_to_html = "visualization/" + file_name
-        with open(path_to_html, "r") as f:
-            html_data = f.read()
-        st.download_button(label="Download HTML", data=html_data, file_name=file_name)
-        st.components.v1.html(html_data, width=1000, height=1000, scrolling=False)
 
 
 if __name__ == "__main__":
