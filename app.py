@@ -234,21 +234,21 @@ def main():
     st.divider()
     ############################################################################
     # INTERACTIVE PLOTS #
-    show_interactive = st.checkbox("Show Interactive Plots")
+    #show_interactive = st.checkbox("Show Interactive Plots")
 
-    if show_interactive:
-        st.header("PROJECTIONS OF TRAINING AND TEST DATA")
-        which = st.selectbox("Set of messages", ("Training", "Test"))
-        if which == "Training":
-            file_name = "umap_train.html"
-        elif which == "Test":
-            file_name = "umap_test.html"
+    #if show_interactive:
+    #    st.header("PROJECTIONS OF TRAINING AND TEST DATA")
+    #    which = st.selectbox("Set of messages", ("Training", "Test"))
+    #    if which == "Training":
+    #        file_name = "umap_train.html"
+    #    elif which == "Test":
+    #        file_name = "umap_test.html"
 
-        path_to_html = "visualization/" + file_name
-        with open(path_to_html, "r") as f:
-            html_data = f.read()
-        st.download_button(label="Download HTML", data=html_data, file_name=file_name)
-        st.components.v1.html(html_data, width=1000, height=1000, scrolling=False)
+     #   path_to_html = "visualization/" + file_name
+     #   with open(path_to_html, "r") as f:
+     #       html_data = f.read()
+     #   st.download_button(label="Download HTML", data=html_data, file_name=file_name)
+     #   st.components.v1.html(html_data, width=1000, height=1000, scrolling=False)
     ############################################################################
 
 
