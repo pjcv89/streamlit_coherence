@@ -1,12 +1,17 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+import pickle
 
 # import torch
-# from utils import score_sentence, get_cosine_similarity
 # from models import UniversalSentenceEncoder, SiameseModel
-from utils_simple import score_sentence, get_cosine_similarity
+from utils import search_exact
+from utils import search_approx
+from utils import get_cosine_similarity
+from utils import project_and_plot_from_sentences
+
 from sentence_transformers import SentenceTransformer
+import faiss
 
 
 def check_password():
@@ -39,23 +44,6 @@ def check_password():
 
 
 @st.cache_resource()
-def load_model():
-    device = (
-        torch.device("mps")
-        if (torch.backends.mps.is_available() and torch.backends.mps.is_built())
-        else torch.device("cpu")
-    )
-    model_name = "sentence-transformers/use-cmlm-multilingual"
-    PATH = "artifacts/siamese_network_use.pth"
-
-    shared_encoder = UniversalSentenceEncoder(model_name)
-    shared_encoder.to(device)
-    siamese_model = SiameseModel(shared_encoder)
-    siamese_model.load_state_dict(torch.load(PATH))
-    return siamese_model
-
-
-@st.cache_resource()
 def load_sentence_transformer():
     model_name = "sentence-transformers/use-cmlm-multilingual"
     sentence_transformer = SentenceTransformer(model_name)
@@ -81,6 +69,27 @@ def load_linear_layer():
 
 
 @st.cache_resource()
+def load_projections():
+    projections_and_categories = np.load("artifacts/projections.npy", allow_pickle=True)
+    projections_train = projections_and_categories[()]["projections"]
+    categories_train = projections_and_categories[()]["categories"]
+    del projections_and_categories
+    return projections_train, categories_train
+
+
+@st.cache_resource()
+def load_umap_reducer():
+    reducer = pickle.load(open("artifacts/umap_reducer.bin", "rb"))
+    return reducer
+
+
+@st.cache_resource()
+def load_faiss_index():
+    faiss_index = faiss.read_index("artifacts/faiss_index_categories_ip.bin")
+    return faiss_index
+
+
+@st.cache_resource()
 def load_test_df():
     df = pd.read_csv("data/test.csv")
     return df
@@ -97,13 +106,16 @@ def main():
     sentence_transformer = load_sentence_transformer()
     categories_embeddings = load_categories_embeddings()
     weight_matrix, bias_vector = load_linear_layer()
+    projections_train, categories_train = load_projections()
+    reducer = load_umap_reducer()
+    index = load_faiss_index()
     df = load_test_df()
     threshold = 0.80
 
     if "sentence1" not in st.session_state:
-        st.session_state["sentence1"] = "your investment has increased"
+        st.session_state["sentence1"] = "consider diversifying your equity exposure"
     if "sentence2" not in st.session_state:
-        st.session_state["sentence2"] = "you should make timely payments"
+        st.session_state["sentence2"] = "your loan is now past due"
 
     st.title("CDI Coherence - Automatic Labeling Demo")
 
@@ -120,122 +132,118 @@ def main():
 
         if st.button("Sample sentence 1", key="button1"):
             st.session_state["sentence1"] = sample_sentence(df, field)
-        st.write("Sentence 1:")
-        st.write(st.session_state["sentence1"])
-        # output1 = score_sentence(
-        #    siamese_model, categories_embeddings, st.session_state["sentence1"]
-        # )
-        output1 = score_sentence(
-            sentence_transformer,
-            weight_matrix,
-            bias_vector,
-            categories_embeddings,
-            st.session_state["sentence1"],
-        )
-        st.write("Ranking of categories for Sentence 1:")
-        st.write(output1)
 
         if st.button("Sample sentence 2", key="button2"):
             st.session_state["sentence2"] = sample_sentence(df, field)
-        st.write("Sentence 2:")
-        st.write(st.session_state["sentence2"])
-        # output2 = score_sentence(
-        #    siamese_model, categories_embeddings, st.session_state["sentence2"]
-        # )
-        output2 = score_sentence(
-            sentence_transformer,
-            weight_matrix,
-            bias_vector,
-            categories_embeddings,
-            st.session_state["sentence2"],
-        )
-        st.write("Ranking of categories for Sentence 2:")
-        st.write(output2)
 
-        # similarity = get_cosine_similarity(
-        #    siamese_model, st.session_state["sentence1"], st.session_state["sentence2"]
-        # )
-        similarity = get_cosine_similarity(
-            sentence_transformer,
-            weight_matrix,
-            bias_vector,
-            st.session_state["sentence1"],
-            st.session_state["sentence2"],
-        )
-        st.write("Compability score (higher means more compatible)")
-        st.write(similarity)
-        if similarity >= threshold:
-            st.warning(
-                "Messages seem compatible (at threshold: " + str(threshold) + ")",
-                icon="✅",
-            )
-        else:
-            st.warning(
-                "Messages seem non-compatible (at threshold: " + str(threshold) + ")",
-                icon="⚠️",
-            )
-    elif option == "Enter Inputs":
-        sentence1 = st.text_input("Sentence 1", value="your investment has increased")
-        if sentence1 != "":
-            # output1 = score_sentence(siamese_model, categories_embeddings, sentence1)
-            output1 = score_sentence(
-                sentence_transformer,
-                weight_matrix,
-                bias_vector,
-                categories_embeddings,
-                sentence1,
-            )
-            st.write("Ranking of categories for Sentence 1:")
-            st.write(output1)
-
-        sentence2 = st.text_input("Sentence 2", value="you should make timely payments")
-        if sentence2 != "":
-            # output2 = score_sentence(siamese_model, categories_embeddings, sentence2)
-            output2 = score_sentence(
-                sentence_transformer,
-                weight_matrix,
-                bias_vector,
-                categories_embeddings,
-                sentence2,
-            )
-            st.write("Ranking of categories for Sentence 2:")
-            st.write(output2)
-
-        # Button to process both texts
-        if sentence1 and sentence2:
-            # similarity = get_cosine_similarity(siamese_model, sentence1, sentence2)
-            similarity = get_cosine_similarity(
-                sentence_transformer, weight_matrix, bias_vector, sentence1, sentence2
-            )
-            st.write("Compability score (higher means more compatible)")
-            st.write(similarity)
-            if similarity >= threshold:
-                st.warning(
-                    "Messages seem compatible (at threshold: " + str(threshold) + ")",
-                    icon="✅",
-                )
-            else:
-                st.warning(
-                    "Messages seem non-compatible (at threshold: "
-                    + str(threshold)
-                    + ")",
-                    icon="⚠️",
-                )
     else:
-        st.header("Projections")
-        option = st.selectbox("Set of messages", ("Training", "Test", "Test (Spanish)"))
-        if option == "Training":
-            file_name = "umap_train.html"
-        elif option == "Test":
-            file_name = "umap_test.html"
-        else:
-            file_name = "umap_test_bigger_spanish.html"
+        st.session_state["sentence1"] = st.text_input(
+            "Sentence 1", value="consider diversifying your equity exposure"
+        )
+        st.session_state["sentence2"] = st.text_input(
+            "Sentence 2", value="your loan is now past due"
+        )
+    ############################################################################
+    # SEARCH PARAMETERS #
+    search_type = "Exact"
+    search_which = "Near"
+    search_metric = "Inner Product"
+    k = 3
 
-        path_to_html = "visualization/" + file_name
-        with open(path_to_html, "r") as f:
-            html_data = f.read()
-        st.download_button(label="Download HTML", data=html_data, file_name=file_name)
-        st.components.v1.html(html_data, width=1000, height=1000, scrolling=False)
+    advanced_options = st.sidebar.checkbox("Advanced Options")
+
+    if advanced_options:
+        search_type = st.sidebar.selectbox("Type of Search", ("Exact", "Approximate"))
+        search_which = st.sidebar.selectbox("Mode", ("Near", "Far"))
+        search_metric = st.sidebar.selectbox("Metric", ("Inner Product", "Euclidean"))
+        k = st.sidebar.slider("Number of categories", 1, 10, 3)
+
+    ranking_fn = search_exact if search_type == "Exact" else search_approx
+    ############################################################################
+    st.divider()
+
+    st.write("**Sentence 1:**")
+    st.write(st.session_state["sentence1"])
+    output1 = ranking_fn(
+        sentence_transformer,
+        weight_matrix,
+        bias_vector,
+        categories_embeddings,
+        st.session_state["sentence1"],
+        search_which,
+        search_metric,
+        k,
+        index,
+    )
+
+    st.write("**Ranking of categories for Sentence 1:**")
+    st.write(output1)
+
+    st.write("**Sentence 2:**")
+    st.write(st.session_state["sentence2"])
+    output2 = ranking_fn(
+        sentence_transformer,
+        weight_matrix,
+        bias_vector,
+        categories_embeddings,
+        st.session_state["sentence2"],
+        search_which,
+        search_metric,
+        k,
+        index,
+    )
+
+    st.write("**Ranking of categories for Sentence 2:**")
+    st.write(output2)
+
+    similarity = get_cosine_similarity(
+        sentence_transformer,
+        weight_matrix,
+        bias_vector,
+        st.session_state["sentence1"],
+        st.session_state["sentence2"],
+    )
+    st.write("**Compability score (higher means more compatible)**")
+    st.write(similarity)
+
+    if similarity >= threshold:
+        st.warning(
+            "Messages seem compatible (at threshold: " + str(threshold) + ")",
+            icon="✅",
+        )
+    else:
+        st.warning(
+            "Messages seem non-compatible (at threshold: " + str(threshold) + ")",
+            icon="⚠️",
+        )
+
+    st.write("**EMBEDDINGS PROJECTIONS**")
+    fig = project_and_plot_from_sentences(
+        sentence_transformer,
+        weight_matrix,
+        bias_vector,
+        reducer,
+        projections_train,
+        categories_train,
+        st.session_state["sentence1"],
+        st.session_state["sentence2"],
+    )
+
+    st.pyplot(fig)
+
+    # else:
+    #    st.header("Projections")
+    #    option = st.selectbox("Set of messages", ("Training", "Test"))
+    #    if option == "Training":
+    #        file_name = "umap_train.html"
+    #    elif option == "Test":
+    #        file_name = "umap_test.html"
+
+    #    path_to_html = "visualization/" + file_name
+    #    with open(path_to_html, "r") as f:
+    #        html_data = f.read()
+    #    st.download_button(label="Download HTML", data=html_data, file_name=file_name)
+    #    st.components.v1.html(html_data, width=1000, height=1000, scrolling=False)
 
 
 if __name__ == "__main__":
