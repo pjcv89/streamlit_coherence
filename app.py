@@ -84,9 +84,10 @@ def load_umap_reducer():
 
 
 @st.cache_resource()
-def load_faiss_index():
-    faiss_index = faiss.read_index("artifacts/faiss_index_categories_ip.bin")
-    return faiss_index
+def load_faiss_indexes():
+    faiss_index_cats = faiss.read_index("artifacts/faiss_index_categories_ip.bin")
+    faiss_index_test = faiss.read_index("artifacts/faiss_index_test_ip.bin")
+    return faiss_index_cats, faiss_index_test
 
 
 @st.cache_resource()
@@ -106,11 +107,12 @@ def main():
     sentence_transformer = load_sentence_transformer()
     categories_embeddings = load_categories_embeddings()
     weight_matrix, bias_vector = load_linear_layer()
-    projections_train, categories_train = load_projections()
-    reducer = load_umap_reducer()
-    index = load_faiss_index()
     df = load_test_df()
     threshold = 0.80
+
+    # projections_train, categories_train = load_projections()
+    # reducer = load_umap_reducer()
+    # index_cats, index_test = load_faiss_indexes()
 
     if "sentence1" not in st.session_state:
         st.session_state["sentence1"] = "consider diversifying your equity exposure"
@@ -146,17 +148,52 @@ def main():
     ############################################################################
     # SEARCH PARAMETERS #
     search_type = "Exact"
-    search_which = "Near"
+    search_which = "Nearest"
     search_metric = "Inner Product"
     k = 3
 
-    advanced_options = st.sidebar.checkbox("Advanced Options")
+    # index = index_cats
+    index = None
+    input_df = categories_embeddings
+    show_static = False
+
+    advanced_options = st.sidebar.checkbox("Advanced Options (Will increase memory!)")
 
     if advanced_options:
-        search_type = st.sidebar.selectbox("Type of Search", ("Exact", "Approximate"))
-        search_which = st.sidebar.selectbox("Mode", ("Near", "Far"))
+
+        #######################################################
+        # LOAD NEEDED ARTIFACTS FOR ADVANCED OPTIONS
+        projections_train, categories_train = load_projections()
+        reducer = load_umap_reducer()
+        index_cats, index_test = load_faiss_indexes()
+        #######################################################
+
+        show_static = st.sidebar.checkbox("Show Projections of the Two Sentences")
+
+        which_index = st.sidebar.selectbox(
+            "Categories or Test Samples", ("Categories", "Test Samples")
+        )
+
+        if which_index == "Categories":
+            search_type = st.sidebar.selectbox(
+                "Type of Search", ("Exact", "Approximate")
+            )
+            index = index_cats
+            input_df = categories_embeddings
+            k_default = 3
+            k_max = 10
+        else:
+            search_type = "Approximate"
+            index = index_test
+            input_df = df
+            k_default = 5
+            k_max = 15
+
+        search_which = st.sidebar.selectbox(
+            "Nearest or Farthest", ("Nearest", "Farthest")
+        )
         search_metric = st.sidebar.selectbox("Metric", ("Inner Product", "Euclidean"))
-        k = st.sidebar.slider("Number of categories", 1, 10, 3)
+        k = st.sidebar.slider("Number of categories", 1, k_max, k_default)
 
     ranking_fn = search_exact if search_type == "Exact" else search_approx
     ############################################################################
@@ -168,7 +205,7 @@ def main():
         sentence_transformer,
         weight_matrix,
         bias_vector,
-        categories_embeddings,
+        input_df,
         st.session_state["sentence1"],
         search_which,
         search_metric,
@@ -176,7 +213,7 @@ def main():
         index,
     )
 
-    st.write("**Ranking of categories for Sentence 1:**")
+    st.write("**Ranking for Sentence 1:**")
     st.write(output1)
 
     st.write("**Sentence 2:**")
@@ -185,7 +222,7 @@ def main():
         sentence_transformer,
         weight_matrix,
         bias_vector,
-        categories_embeddings,
+        input_df,
         st.session_state["sentence2"],
         search_which,
         search_metric,
@@ -193,7 +230,7 @@ def main():
         index,
     )
 
-    st.write("**Ranking of categories for Sentence 2:**")
+    st.write("**Ranking for Sentence 2:**")
     st.write(output2)
 
     similarity = get_cosine_similarity(
@@ -216,39 +253,43 @@ def main():
             "Messages seem non-compatible (at threshold: " + str(threshold) + ")",
             icon="⚠️",
         )
+    ############################################################################
+    # STATIC PLOT #
+    # show_static = st.checkbox("Show Static Plot")
 
-    st.write("**PROJECTIONS OF THE TWO SENTENCES**")
-    fig = project_and_plot_from_sentences(
-        sentence_transformer,
-        weight_matrix,
-        bias_vector,
-        reducer,
-        projections_train,
-        categories_train,
-        st.session_state["sentence1"],
-        st.session_state["sentence2"],
-    )
+    if show_static:
+        st.write("**PROJECTIONS OF THE TWO SENTENCES**")
+        fig = project_and_plot_from_sentences(
+            sentence_transformer,
+            weight_matrix,
+            bias_vector,
+            reducer,
+            projections_train,
+            categories_train,
+            st.session_state["sentence1"],
+            st.session_state["sentence2"],
+        )
 
-    st.pyplot(fig)
+        st.pyplot(fig)
 
     st.divider()
     ############################################################################
     # INTERACTIVE PLOTS #
-    #show_interactive = st.checkbox("Show Interactive Plots")
+    show_interactive = st.checkbox("Show Interactive Plots")
 
-    #if show_interactive:
-    #    st.header("PROJECTIONS OF TRAINING AND TEST DATA")
-    #    which = st.selectbox("Set of messages", ("Training", "Test"))
-    #    if which == "Training":
-    #        file_name = "umap_train.html"
-    #    elif which == "Test":
-    #        file_name = "umap_test.html"
+    if show_interactive:
+        st.header("PROJECTIONS OF TRAINING AND TEST DATA")
+        which = st.selectbox("Set of messages", ("Training", "Test"))
+        if which == "Training":
+            file_name = "umap_train.html"
+        elif which == "Test":
+            file_name = "umap_test.html"
 
-     #   path_to_html = "visualization/" + file_name
-     #   with open(path_to_html, "r") as f:
-     #       html_data = f.read()
-     #   st.download_button(label="Download HTML", data=html_data, file_name=file_name)
-     #   st.components.v1.html(html_data, width=1000, height=1000, scrolling=False)
+        path_to_html = "visualization/" + file_name
+        with open(path_to_html, "r") as f:
+            html_data = f.read()
+        st.download_button(label="Download HTML", data=html_data, file_name=file_name)
+        st.components.v1.html(html_data, width=1000, height=1000, scrolling=False)
     ############################################################################
 
 
