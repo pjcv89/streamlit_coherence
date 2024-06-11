@@ -28,7 +28,7 @@ def search_exact(
     sentence_transformer,
     weight_matrix,
     bias_vector,
-    categories_embeddings,
+    input_df,
     sentence,
     mode,
     metric,
@@ -43,13 +43,13 @@ def search_exact(
         sentence=sentence,
     )
 
-    if mode == "Far":
+    if mode == "Farthest":
         embedding = (-1) * embedding
 
     metric_fn = cosine_similarity if metric == "Inner Product" else euclidean_distances
     ascending = False if metric == "Inner Product" else True
 
-    out = categories_embeddings.copy()
+    out = input_df.copy()
     out["score"] = out["embeddings"].apply(
         lambda x: metric_fn(x.reshape(1, -1), embedding.reshape(1, -1))[0][0]
     )
@@ -97,7 +97,7 @@ def search_approx(
     sentence_transformer,
     weight_matrix,
     bias_vector,
-    categories_embeddings,
+    input_df,
     sentence,
     mode,
     metric,
@@ -105,15 +105,17 @@ def search_approx(
     index,
 ):
 
-    reference_df = categories_embeddings.copy().rename(
-        columns={"category_anchor": "category"}
-    )
-    cols = ["category"]
+    if input_df.shape[0] <= 10:
+        reference_df = input_df.copy().rename(columns={"category_anchor": "category"})
+        cols = ["category"]
+    else:
+        reference_df = input_df.copy()
+        cols = ["category", "text"]
 
     query = embed(sentence_transformer, weight_matrix, bias_vector, sentence)
     query = np.expand_dims(query, 0)
 
-    if mode == "Far":
+    if mode == "Farthest":
         query = (-1) * query
 
     if metric == "Inner Product":
