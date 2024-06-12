@@ -121,30 +121,24 @@ def main():
 
     st.title("CDI Coherence - Automatic Labeling Demo")
 
-    option = st.sidebar.selectbox(
-        "Select Option", ("Sampling Sentences", "Enter Inputs")
-    )
+    ############################################################################
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("Sample sentence 1 (English)", key="button1eng"):
+            st.session_state["sentence1"] = sample_sentence(df, "text")
+    with col2:
+        if st.button("Sample sentence 1 (Spanish)", key="button1spa"):
+            st.session_state["sentence1"] = sample_sentence(df, "text_esp")
+    st.text_area("Sentence 1", st.session_state["sentence1"], key="sentence1")
 
-    if option == "Sampling Sentences":
-        option = st.sidebar.selectbox("Select Language", ("English", "Spanish"))
-        if option == "English":
-            field = "text"
-        else:
-            field = "text_esp"
-
-        if st.button("Sample sentence 1", key="button1"):
-            st.session_state["sentence1"] = sample_sentence(df, field)
-
-        if st.button("Sample sentence 2", key="button2"):
-            st.session_state["sentence2"] = sample_sentence(df, field)
-
-    else:
-        st.session_state["sentence1"] = st.text_input(
-            "Sentence 1", value="consider diversifying your equity exposure"
-        )
-        st.session_state["sentence2"] = st.text_input(
-            "Sentence 2", value="your loan is now past due"
-        )
+    col3, col4 = st.columns([1, 1])
+    with col3:
+        if st.button("Sample sentence 2 (English)", key="button2eng"):
+            st.session_state["sentence2"] = sample_sentence(df, "text")
+    with col4:
+        if st.button("Sample sentence 2 (Spanish)", key="button2spa"):
+            st.session_state["sentence2"] = sample_sentence(df, "text_esp")
+    st.text_area("Sentence 2", st.session_state["sentence2"], key="sentence2")
     ############################################################################
     # SEARCH PARAMETERS #
     search_type = "Exact"
@@ -168,7 +162,7 @@ def main():
         index_cats, index_test = load_faiss_indexes()
         #######################################################
 
-        show_static = st.sidebar.checkbox("Show Projections of the Two Sentences")
+        # show_static = st.checkbox("Show Projections of the Two Sentences")
 
         which_index = st.sidebar.selectbox(
             "Categories or Test Samples", ("Categories", "Test Samples")
@@ -193,7 +187,7 @@ def main():
             "Nearest or Farthest", ("Nearest", "Farthest")
         )
         search_metric = st.sidebar.selectbox("Metric", ("Inner Product", "Euclidean"))
-        k = st.sidebar.slider("Number of categories", 1, k_max, k_default)
+        k = st.sidebar.slider("Number of outputs in rankings", 1, k_max, k_default)
 
     ranking_fn = search_exact if search_type == "Exact" else search_approx
     ############################################################################
@@ -256,21 +250,20 @@ def main():
     ############################################################################
     # STATIC PLOT #
     # show_static = st.checkbox("Show Static Plot")
-
-    if show_static:
-        st.write("**PROJECTIONS OF THE TWO SENTENCES**")
-        fig = project_and_plot_from_sentences(
-            sentence_transformer,
-            weight_matrix,
-            bias_vector,
-            reducer,
-            projections_train,
-            categories_train,
-            st.session_state["sentence1"],
-            st.session_state["sentence2"],
-        )
-
-        st.pyplot(fig)
+    if advanced_options:
+        if st.button("Show Projections of the Two Sentences", key="staticplot"):
+            st.write("**PROJECTIONS OF THE TWO SENTENCES**")
+            fig = project_and_plot_from_sentences(
+                sentence_transformer,
+                weight_matrix,
+                bias_vector,
+                reducer,
+                projections_train,
+                categories_train,
+                st.session_state["sentence1"],
+                st.session_state["sentence2"],
+            )
+            st.pyplot(fig)
 
     st.divider()
     ############################################################################
