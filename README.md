@@ -8,7 +8,7 @@ This repository contains the files to launch an [Streamlit](https://streamlit.io
 
 **1. Create and activate environment**
 
-In order to use this app locally you will need to create a Conda environment with Python 3.9. Let's name it, for example, **"app_coherence"**.
+In order to use this app locally you will need to create a Conda environment with Python 3.10. Let's name it, for example, **"app_coherence"**.
 
 ```
 conda create -n app_coherence python=3.10
@@ -71,12 +71,10 @@ Here's the folder structure of the project.
 
 ```
 streamlit_coherence/        # Root directory.
-|- .streamlit/              # Contains secrets.toml file with password defintion
 |- artifacts/               # Contains artifacts for both models
 |- data/                    # Contains csv file with test data
 |- pages/                   # Contains the .py files for each page
 |- visualization/           # Contains htmls files
-|- app.py                   # Main Streamlit app file
 |- requirements.txt         # Contains needed libraries and versions
 |- utils_biencoder.py       # Utility functions for bi-encoder model
 |- utils_crossencoder.py    # Utility functions for cross-encoder model
