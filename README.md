@@ -6,6 +6,8 @@ This repository contains the files to launch an [Streamlit](https://streamlit.io
 
 ## Set up and first time usage
 
+**0. Clone this repo.**
+
 **1. Create and activate environment**
 
 In order to use this app locally you will need to create a Conda environment with Python 3.10. Let's name it, for example, **"app_coherence"**.
@@ -70,7 +72,7 @@ streamlit run Welcome.py
 Here's the folder structure of the project.
 
 ```
-streamlit_coherence/        # Root directory.
+streamlit_coherence/        # Root directory
 |- artifacts/               # Contains artifacts for both models
 |- data/                    # Contains csv file with test data
 |- pages/                   # Contains the .py files for each page
