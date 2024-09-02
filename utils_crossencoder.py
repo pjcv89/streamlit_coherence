@@ -63,6 +63,67 @@ def plot_importances(list_of_tuples, pred_class, top_values=10):
     return fig
 
 
+def plot_matrix(
+    mat_sum,
+    tokens_sentence1,
+    tokens_sentence2,
+    text_x: str,
+    text_y: str,
+    pred_class_label: float,
+):
+    # Create subplot
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    # Create matrix heatplot from attributes multiplication
+    cax = ax.matshow(mat_sum, interpolation="nearest")
+    cax2 = fig.add_axes(
+        [
+            ax.get_position().x1 + 0.01,
+            ax.get_position().y0,
+            0.02,
+            ax.get_position().height,
+        ]
+    )
+    fig.colorbar(cax, cax=cax2)
+
+    # Create axis
+    xaxis = np.arange(len(tokens_sentence1))
+    yaxis = np.arange(len(tokens_sentence2))
+
+    # Set ticks on axis and labels
+    ax.set_xticks(xaxis)
+    ax.set_yticks(yaxis)
+    ax.set_xticklabels(tokens_sentence1)
+    ax.set_yticklabels(tokens_sentence2)
+
+    ##Add title
+    figure_title = "Pairwise attributes effect: " + r"$\bf{" + pred_class_label + "}$"
+    plt.text(
+        0.5,
+        1.15,
+        figure_title,
+        horizontalalignment="center",
+        fontsize=13,
+        transform=ax.transAxes,
+    )
+    u1 = "Msg 1:  "
+    u2 = "Msg 2:  "
+
+    ax.text(
+        0.5,
+        -0.15,
+        r"$\bf{" + u1 + "}$" + text_x + "\n\n" + r"$\bf{" + u2 + "}$" + text_y,
+        fontsize=10,
+        ha="center",
+        transform=ax.transAxes,
+        wrap=True,
+    )
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+    # plt.show()
+    return fig
+
+
 def get_from_attr(attributions_tuple, index_sep, tokens=True):
     """
     This function returns attribution values from pairwise array (if tokens=False) and tokenks (if tokens=True -- default)
@@ -166,7 +227,12 @@ def plot_attribution(
     This function plots the attribution bars given a sample is the format of dataframe where 'text_x' is 'Message1' and 'text_y' is 'Message 2'
     """
 
-    pairwise_attr = explainer(text_x, text_y, flip_sign=False, class_name="score_soft")
+    pairwise_attr = explainer(
+        text_x,
+        text_y,
+        flip_sign=False,
+        # class_name="score_soft"
+    )
 
     index_sep = [i for i, tupl in enumerate(pairwise_attr) if tupl[0] == "[SEP]"][0]
 
@@ -218,4 +284,22 @@ def plot_attribution(
         list(aggregated_attribution_scores2.items()), pred_class_label
     )
 
-    return fig_1, fig_2
+    #############################################################################
+    tokens_sentence1 = np.array(list(aggregated_attribution_scores1.keys()))
+    tokens_sentence2 = np.array(list(aggregated_attribution_scores2.keys()))
+
+    list_attr_sentence1 = np.array(list(aggregated_attribution_scores1.values()))
+    list_attr_sentence2 = np.array(list(aggregated_attribution_scores2.values()))
+
+    mat_sum = np.add.outer(list_attr_sentence2, list_attr_sentence1)
+    fig_matrix = plot_matrix(
+        mat_sum,
+        tokens_sentence1,
+        tokens_sentence2,
+        text_x,
+        text_y,
+        pred_class_label,
+    )
+    #############################################################################
+
+    return fig_1, fig_2, fig_matrix
