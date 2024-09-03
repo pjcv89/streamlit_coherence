@@ -44,8 +44,22 @@ More info from the official Streamlit documentation [here](https://docs.streamli
 
 **3. Download the required models artifacts**
 
+- Option 1 (manually):
 While logged in with your corporate email credentials, please download the compressed file from [here](https://drive.google.com/drive/folders/1wteSsc1jlOqwLsMmaugSsmvL7U5WtB67). Then, uncompress the file and place it in the root directory of this project.
-It should be a single folder named **artifacts** with two subfolders: **biencoder** and **crossencoder**.
+It should be a single folder named **artifacts** with two subfolders: **biencoder** and **crossencoder**. After this, you can delete the compressed file **artifacts.zip**.
+
+- Option 2 (with terminal commands):
+Once installed the requirements, execute the following commands.
+
+First, download the compressed file:
+```
+gdown 1UwI02AW08g0EAh6DYIkHtgzQtwWM_Pz6
+```
+
+Second, decompress the file and delete the compressed file.
+```
+unzip artifacts.zip && rm artifacts.zip
+```
 
 **4. Launch app**
 
