@@ -152,7 +152,7 @@ def main():
 
         Here, the interactions between words of both sentences are shown.
         - Pairs of words that influence the model prediction to be incoherent will have entries with higher (clearer) values.
-        - Pairs of words that influence the model prediction to be cooherent will have entries with lower (darker) values.
+        - Pairs of words that influence the model prediction to be coherent will have entries with lower (darker) values.
         """
         )
         st.pyplot(fig_matrix)
