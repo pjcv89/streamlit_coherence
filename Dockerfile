@@ -1,7 +1,7 @@
 # streamlit_coherence/Dockerfile
 
 FROM python:3.10-slim
-MAINTAINER Pablo Campos Viana
+LABEL maintainer="Pablo Campos Viana"
 
 WORKDIR /streamlit_coherence
 
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/pjcv89/streamlit_coherence .
+RUN git clone -b develop https://github.com/pjcv89/streamlit_coherence .
 
 RUN pip3 install -r requirements.txt
 
