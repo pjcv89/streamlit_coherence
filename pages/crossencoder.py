@@ -45,6 +45,12 @@ def sample_sentence(df, field):
     return df.sample(1)[field].values[0]
 
 
+def form_callback(sentence1, sentence2, score, feedback):
+    encoder_type = "crossencoder"
+    with open("data/feedback_crossencoder.csv", "a+") as f:
+        f.write(f"{encoder_type}\t{sentence1}\t{sentence2}\t{score}\t{feedback}\n")
+
+
 # Main function to run the Streamlit app
 def main():
 
@@ -187,7 +193,40 @@ def main():
 
         st_shap(shap.plots.text(shap_values), height=300)
 
-        st.divider()
+    st.divider()
+
+    ############################################################################
+    # FEEDBACK FORM #
+    with st.form(key="feedback_form_cross", clear_on_submit=True):
+
+        st.write("**Save current record and provide feedback**")
+
+        feedback = st.text_input("Enter your comments", key="comments")
+
+        submitted = st.form_submit_button("Save")
+
+        if submitted:
+            form_callback(
+                st.session_state["sentence1"],
+                st.session_state["sentence2"],
+                score,
+                feedback,
+            )
+
+    st.info(" #### Current content of the CSV file :point_down:")
+    st.dataframe(
+        pd.read_csv(
+            "data/feedback_crossencoder.csv",
+            sep="\t",
+            names=["encoder", "sentence1", "sentence2", "score", "comments"],
+        ),
+        height=300,
+    )
+    st.warning(
+        "You can click on the **Download as CSV** option on the top-right corner of the table",
+        icon="💾",
+    )
+    ############################################################################
 
 
 if __name__ == "__main__":

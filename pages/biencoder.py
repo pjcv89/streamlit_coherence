@@ -73,6 +73,12 @@ def sample_sentence(df, field):
     return df.sample(1)[field].values[0]
 
 
+def form_callback(sentence1, sentence2, score, feedback):
+    encoder_type = "biencoder"
+    with open("data/feedback_biencoder.csv", "a+") as f:
+        f.write(f"{encoder_type}\t{sentence1}\t{sentence2}\t{score}\t{feedback}\n")
+
+
 # Main function to run the Streamlit app
 def main():
 
@@ -118,7 +124,7 @@ def main():
     # SEARCH PARAMETERS #
     search_type = "Exact"
     search_which = "Nearest"
-    search_metric = "Inner Product"
+    search_metric = "Euclidean"
     k = 3
 
     # index = index_cats
@@ -160,7 +166,7 @@ def main():
         search_which = st.sidebar.selectbox(
             "Nearest or Farthest", ("Nearest", "Farthest")
         )
-        search_metric = st.sidebar.selectbox("Metric", ("Inner Product", "Euclidean"))
+        search_metric = st.sidebar.selectbox("Metric", ("Euclidean", "Inner Product"))
         k = st.sidebar.slider("Number of outputs in rankings", 1, k_max, k_default)
 
     ranking_fn = search_exact if search_type == "Exact" else search_approx
@@ -265,6 +271,8 @@ def main():
 
     st.divider()
     ############################################################################
+
+    ############################################################################
     # INTERACTIVE PLOTS #
     show_interactive = st.checkbox("Show Interactive Plots")
 
@@ -281,6 +289,40 @@ def main():
             html_data = f.read()
         st.download_button(label="Download HTML", data=html_data, file_name=file_name)
         st.components.v1.html(html_data, width=1000, height=1000, scrolling=False)
+    st.divider()
+    ############################################################################
+
+    ############################################################################
+    # FEEDBACK FORM #
+    with st.form(key="feedback_form_bi", clear_on_submit=True):
+
+        st.write("**Save current record and provide feedback**")
+
+        feedback = st.text_input("Enter your comments", key="comments")
+
+        submitted = st.form_submit_button("Save")
+
+        if submitted:
+            form_callback(
+                st.session_state["sentence1"],
+                st.session_state["sentence2"],
+                score,
+                feedback,
+            )
+
+    st.info(" #### Current content of the CSV file :point_down:")
+    st.dataframe(
+        pd.read_csv(
+            "data/feedback_biencoder.csv",
+            sep="\t",
+            names=["encoder", "sentence1", "sentence2", "score", "comments"],
+        ),
+        height=300,
+    )
+    st.warning(
+        "You can click on the **Download as CSV** option on the top-right corner of the table",
+        icon="💾",
+    )
     ############################################################################
 
 
